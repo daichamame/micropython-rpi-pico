@@ -1,3 +1,6 @@
 # MicroPythonで作成したサンプル集
-Raspberry Pi Pico でMicroPythonを使って動作確認をするために作成したサンプルを集めたものです。
-プログラミングの参考になれば幸いです。
+Raspberry Pi Pico でMicroPythonを使って動作確認をするために作成したプログラムを整理したものです。
+
+
+
+
