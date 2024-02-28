@@ -1,3 +1,4 @@
+""" AQM1602 sample """
 import daichamame_aqm1602
 import time
 
