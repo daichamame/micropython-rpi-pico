@@ -79,6 +79,14 @@ class SSD1306(object):
         """ 画面を消去する"""
         self.framebuf.fill(0)
         self.display()
+    # バッファの初期化
+    def buffer_clear(self):
+        """ バッファの初期化"""
+        self.framebuf.fill(0)
+    # バッファの一部エリア初期化
+    def partial_buffer_clear(self,sx,sy,width,height):
+        """ バッファの一部エリア初期化"""
+        self.framebuf.rect(sx,sy,width,height,0,True)
     # 画面表示
     def display(self):
         """ 表示用配列を利用して画面を表示する"""
@@ -176,5 +184,20 @@ class SSD1306(object):
             self.framebuf.line(self.WIDTH-sx,self.HEIGHT-sy,self.WIDTH-ex,self.HEIGHT-ey,self.WHITE)
         elif self.rotate == 270:
             self.framebuf.line(self.WIDTH-sy,sx,self.WIDTH-ey,ex,self.WHITE)
+        else:
+            return
+    # 四角形を描く
+    def rect(self,sx,sy,width,height,color,fill):
+        """開始位置(sx,sy)から、幅(width)、高さ(height)で四角形を描く
+        色(color)は 0,1 ,塗りつぶし(fill)は、True/False
+        表示は、display()を実行する"""
+        if self.rotate == 0:
+            self.framebuf.rect(sx,sy,width,height,color,fill)
+        elif self.rotate == 90:
+            self.framebuf.rect(sy,self.HEIGHT-sx-width,height,width,color,fill)
+        elif self.rotate == 180:
+            self.framebuf.rect(self.WIDTH-sx-width,self.HEIGHT-sy-height,width,height,color,fill)
+        elif self.rotate == 270:
+            self.framebuf.rect(self.WIDTH-sy-height,sx,height,width,color,fill)
         else:
             return
