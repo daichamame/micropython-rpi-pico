@@ -277,3 +277,13 @@ class Epd266(object):
             self.framebuf.line(self.WIDTH-sy,sx,self.WIDTH-ey,ex,self.BLACK)
         else:
             return
+    # アイコン(32x32)を描く
+    def draw_icon(self,dx, dy, buf,ratio):
+        """ 開始位置(dx,dy）からbufのアイコンデータを描く、ratioは、拡大率
+        画面に表示する場合には、display()を実行する """
+        for j in range(64):
+            for i in range(16):
+                if(int(buf[j])) & (0x8000 >> int(i%16)):
+                    self.mpset(dx+i*ratio+16*(j%2==1)*ratio,dy+int(j/2)*ratio,self.BLACK,ratio)
+                else:
+                    self.mpset(dx+i*ratio+16*(j%2==1)*ratio,dy+int(j/2)*ratio,self.WHITE,ratio)
