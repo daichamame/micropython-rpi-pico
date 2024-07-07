@@ -9,9 +9,13 @@ import time
 class DHT20(object):
     # I2C
     ADDRESS      = const(0x38)
-    def __init__(self):
-        # I2Cに使うピンの設定です
-        self.i2c = I2C(0,scl=Pin(1),sda=Pin(0),freq=400000)
+    def __init__(self,scl_pin=None,sda_pin=None):
+        # sclとsdaのいずれかでもNoneならデフォルトピン使用
+        if(scl_pin is None or sda_pin is None):
+            self.i2c = I2C(0,scl=Pin(5),sda=Pin(4),freq=400000)
+        else:
+            self.i2c = I2C(0,scl=Pin(scl_pin),sda=Pin(sda_pin),freq=400000)
+
     def read_status(self):
         ret=self.i2c.readfrom(self.ADDRESS,1)
         return ret

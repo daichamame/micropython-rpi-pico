@@ -10,8 +10,14 @@ import time
 class ATP3011F4(object):
     # I2C
     ADDRESS      = const(0x2e)
-    def __init__(self):
-        self.i2c = I2C(0,scl=Pin(1),sda=Pin(0),freq=400000)
+    def __init__(self,scl_pin=None,sda_pin=None):
+        # sclとsdaのいずれかNoneならデフォルトピン使用
+        if(scl_pin is None or sda_pin is None):
+            self.i2c = I2C(0,scl=Pin(5),sda=Pin(4),freq=400000)
+        else:
+            self.i2c = I2C(0,scl=Pin(scl_pin),sda=Pin(sda_pin),freq=400000)
+
+
     # バージョン
     def version(self):
         self.i2c.writeto(self.ADDRESS,"#V\r")
