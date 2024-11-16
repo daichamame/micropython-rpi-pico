@@ -206,13 +206,22 @@ class SSD1306(object):
             self.framebuf.rect(self.WIDTH-sy-height,sx,height,width,color,fill)
         else:
             return
-    # アイコン(32x32)を描く
-    def draw_icon(self,dx, dy, buf,ratio):
+    # アイコン(32x32 or 16x16)を描く
+    def draw_icon(self,dx, dy, buf,ratio,size=32):
         """ 開始位置(dx,dy）からbufのアイコンデータを描く、ratioは、拡大率
         画面に表示する場合には、display()を実行する """
-        for j in range(64):
-            for i in range(16):
-                if(int(buf[j])) & (0x8000 >> int(i%16)):
-                    self.mpset(dx+i*ratio+16*(j%2==1)*ratio,dy+int(j/2)*ratio,self.WHITE,ratio)
-                else:
-                    self.mpset(dx+i*ratio+16*(j%2==1)*ratio,dy+int(j/2)*ratio,self.BLACK,ratio)
+        if(size == 32):
+            for j in range(64):
+                for i in range(16):
+                    if(int(buf[j])) & (0x8000 >> int(i%16)):
+                        self.mpset(dx+i*ratio+16*(j%2==1)*ratio,dy+int(j/2)*ratio,self.WHITE,ratio)
+                    else:
+                        self.mpset(dx+i*ratio+16*(j%2==1)*ratio,dy+int(j/2)*ratio,self.BLACK,ratio)
+        elif(size == 16):
+            for j in range(16):
+                for i in range(16):
+                    if(int(buf[j])) & (0x8000 >> int(i%16)):
+                        self.mpset(dx+i*ratio,dy+j*ratio,self.WHITE,ratio)
+                    else:
+                        self.mpset(dx+i*ratio,dy+j*ratio,self.BLACK,ratio)
+
