@@ -74,9 +74,9 @@ dfplay.set_repeat_play() # 繰り返し再生モードに設定
 while 1:
     (v,h)=jy.check_value()	# ジョイスティックの値を取得
     if(v != 0):	# 縦方向に変化（ボリュームの変更）
-        if(v<0 and vol >= 0):
+        if(v<0 and vol < 30):
             dfplay.inc_volume()
-        elif(v>0 and vol <= 30):
+        elif(v>0 and vol > 0):
             dfplay.dec_volume()
         vol=dfplay.get_volume()
         ssd1306.draw_icon(80, 0,vol_icon[int((vol+1)/8)],1,16) # Volアイコン更新
@@ -93,4 +93,5 @@ while 1:
         ssd1306.print(16,16,"{:03d}".format(track),2)
         ssd1306.display()
         now_track=track
+    time.sleep_ms(600)
     
