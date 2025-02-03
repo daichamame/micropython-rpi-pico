@@ -59,7 +59,9 @@ dfplay.reset() #　リセット
 dfplay.set_volume(10)   # 音量設定
 vol=dfplay.get_volume()	# 音量取得
 total = dfplay.get_total_count() # SDカード内の局数取得
-now_track = dfplay.get_track()	# 現在の曲番号取得
+dfplay.play() # 再生
+track = dfplay.get_track()
+
 # OLED初期描画
 ssd1306.draw_icon( 0, 0,band_icon[0],1,16)
 ssd1306.draw_icon(16, 0,band_icon[1],1,16)
@@ -68,9 +70,9 @@ ssd1306.draw_icon(40, 0,music_icon[0],1,16)
 ssd1306.draw_icon(80, 0,vol_icon[int((vol+1)/8)],1,16)  # Volアイコン表示
 ssd1306.print(96,0,"{:03d}".format(vol),1)             # 音量表示
 ssd1306.print(64,16,"/{:03d}".format(total),2)            # トータル曲数
-ssd1306.print(16,16,"{:03d}".format(now_track),2)            # 再生曲番号
+ssd1306.print(16,16,"{:03d}".format(track),2)            # 再生曲番号
 ssd1306.display() 
-dfplay.set_repeat_play() # 繰り返し再生モードに設定
+
 while 1:
     (v,h)=jy.check_value()	# ジョイスティックの値を取得
     if(v != 0):	# 縦方向に変化（ボリュームの変更）
@@ -79,19 +81,20 @@ while 1:
         elif(v>0 and vol > 0):
             dfplay.dec_volume()
         vol=dfplay.get_volume()
-        ssd1306.draw_icon(80, 0,vol_icon[int((vol+1)/8)],1,16) # Volアイコン更新
-        ssd1306.print(96,0,"{:03d}".format(vol),1)            # 音量表示更新
-        ssd1306.display()
+        if(vol <= 30): # 値が正しく取得できないことがある。
+            ssd1306.draw_icon(80, 0,vol_icon[int((vol+1)/8)],1,16) # Volアイコン更新
+            ssd1306.print(96,0,"{:03d}".format(vol),1)            # 音量表示更新
+            ssd1306.display()
     if(h != 0):	# 曲の変更
         if(h<0):
             dfplay.prev_music()
         elif(h>0):
             dfplay.next_music()
-    # 現在の再生曲番号を取得
-    track = dfplay.get_track()
-    if(now_track != track and track <= total): # 番号が変わったら、表示の変更
-        ssd1306.print(16,16,"{:03d}".format(track),2)
-        ssd1306.display()
-        now_track=track
-    time.sleep_ms(600)
+        # 現在の再生曲番号を取得
+        time.sleep_ms(200)
+        track = dfplay.get_track()
+        if(track <= total):
+            ssd1306.print(16,16,"{:03d}".format(track),2)
+            ssd1306.display()
+    time.sleep_ms(200)
     
