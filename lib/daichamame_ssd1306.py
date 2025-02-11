@@ -19,7 +19,7 @@ class SSD1306(object):
     BUFFER_SIZE  = WIDTH * PAGE_NUM
     # I2C
     ADDRESS      = const(0x3c)
-    def __init__(self, rotate,font_array,font_size,scl_pin=None,sda_pin=None):
+    def __init__(self, rotate,font_array,font_size,ch=0,scl_pin=None,sda_pin=None):
         """ 初期設定 rotate:(0 90 180 270)
         font_array:フォントビットマップ情報
         font_size:フォントサイズ、半角は半分 """
@@ -27,7 +27,7 @@ class SSD1306(object):
         if(scl_pin is None or sda_pin is None):
             self.i2c = I2C(0,scl=Pin(5),sda=Pin(4),freq=400000)
         else:
-            self.i2c = I2C(0,scl=Pin(scl_pin),sda=Pin(sda_pin),freq=400000)
+            self.i2c = I2C(ch,scl=Pin(scl_pin),sda=Pin(sda_pin),freq=400000)
               
         self.rotate = rotate
         self.cmd = bytearray(2)

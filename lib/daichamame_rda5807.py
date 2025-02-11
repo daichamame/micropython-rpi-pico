@@ -9,8 +9,8 @@ import time
 class RDA5807(object):
     # バルク用アドレス 0x10は未使用
     RANDOM_ADDRESS	= 0x11
-    def __init__(self, id=0,scl_pin = 5,sda_pin = 4):
-        self.i2c = I2C(id,scl=Pin(scl_pin),sda=Pin(sda_pin),freq=400000)
+    def __init__(self, ch=0,scl_pin = 5,sda_pin = 4,frequency=100000):
+        self.i2c = I2C(ch,scl=Pin(scl_pin),sda=Pin(sda_pin),freq=frequency)
 
     # レジスタにデータを描きこむ
     def send_data(self,reg,data):

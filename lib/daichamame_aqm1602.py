@@ -78,12 +78,12 @@ class AQM1602(object):
 
     # I2C
     ADDRESS      = const(0x3e)
-    def __init__(self,scl_pin=None,sda_pin=None):
+    def __init__(self,ch=0,scl_pin=None,sda_pin=None,frequency=100000):
         # sclとsdaのいずれかNoneならデフォルトピン使用
         if(scl_pin is None or sda_pin is None):
-            self.i2c = I2C(0,scl=Pin(5),sda=Pin(4),freq=400000)
+            self.i2c = I2C(0,scl=Pin(5),sda=Pin(4),freq=frequency)
         else:
-            self.i2c = I2C(0,scl=Pin(scl_pin),sda=Pin(sda_pin),freq=400000)
+            self.i2c = I2C(ch,scl=Pin(scl_pin),sda=Pin(sda_pin),freq=frequency)
 
         self.cmd = bytearray(2)
     def init(self):

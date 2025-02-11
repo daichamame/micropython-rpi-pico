@@ -59,7 +59,7 @@ jy = daichamame_joystick.JOYSTICK()
 jy.init(threshold=16384)
 
 # RDA5807の初期化
-radio = daichamame_rda5807.RDA5807(id=0,scl_pin=5,sda_pin=4)
+radio = daichamame_rda5807.RDA5807(ch=0,scl_pin=5,sda_pin=4,frequency=400000)
 radio.init()
 radio.set_volume(vol)		# ボリュームの設定
 radio.set_freq(freq[ct])                  # 周波数の設定

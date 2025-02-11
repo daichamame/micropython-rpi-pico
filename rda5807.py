@@ -2,7 +2,7 @@ import daichamame_rda5807
 import time
 
 # RDA5807の初期化
-radio = daichamame_rda5807.RDA5807(id=0,scl_pin=5,sda_pin=4)
+radio = daichamame_rda5807.RDA5807(ch=0,scl_pin=5,sda_pin=4,frequency=100000)
 # FMラジオの起動
 radio.init()
 
