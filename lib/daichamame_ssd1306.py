@@ -145,6 +145,30 @@ class SSD1306(object):
             else:
                 l_num = m_num+1
         return self.font_array[0]   # フォントが見つからなかった場合
+    # 文字を書く(JIS X 0201の半角文字用)
+    def print_half( self,dx, dy, buf,ratio):
+        """ 開始位置(dx,dy）からbufの文字列を書く、ratioは、拡大率
+        画面に表示する場合には、display()を実行する
+        半角文字用である
+        """
+        # 縦横の向きに合わせて幅サイズを調整
+        if self.rotate == 0 or self.rotate == 180:
+            wx=self.WIDTH
+        else:
+            wx=self.HEIGHT
+        for ch in buf:
+            font_data=self.get_fontdata("0x"+ch.encode('utf-8').hex())  # フォントデータを取得
+            for j in range(self.font_size):
+                if (dx > wx-int(self.font_size/2*ratio)): # 改行の判定
+                    dx=0
+                    dy+=self.font_size*ratio
+                for i in range(self.font_size/2):
+                    if(int(font_data[j+1])) & (0x80 >> int(i%(self.font_size/2))):
+                        self.mpset(dx+i*ratio,dy+j*ratio,self.WHITE,ratio)
+                    else:
+                        self.mpset(dx+i*ratio,dy+j*ratio,self.BLACK,ratio)
+            dx+=int(self.font_size/2*ratio)
+
     # 文字を書く
     def print( self,dx, dy, buf,ratio):
         """ 開始位置(dx,dy）からbufの文字列を書く、ratioは、拡大率
