@@ -80,4 +80,9 @@ class ROTALY_ENCODER:
         直前の方向と、現在の値を返す
         """
         return (self.direction,self.pos)
-     
+    # 現在の状態を設定
+    def set_position(self,pos):
+        """
+        現在の状態を設定する
+        """
+        self.pos = pos
