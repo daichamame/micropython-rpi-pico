@@ -13,13 +13,12 @@ class FontLoader(object):
         try:
             os.stat(bdf_file_name)
             self.filename = bdf_file_name
-            # 0x00のBITMAAP情報がないフォントファイル対策
-            self.fontdata=[[0x00    ,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00],]
         except Exception as e:
             print(f"{e} {bdf_file_name}は存在しません。")
 
     # BDFファイルからリストに格納
     def load_font(self):
+        fontdata=[]
         fontline=[]	# 1文字のフォント情報格納用
         b_flag=0	# ピクセル情報行判定
         file = open(self.filename, 'r')
@@ -30,16 +29,14 @@ class FontLoader(object):
                 charcode = re.search(r'ENCODING (([ 0-9]*))', line)
                 str_addr=charcode.group(1).replace(" ", "") # スペースを取り除く
                 addr=int(str_addr,10) # 数字に変換
-                if addr < 0xa1:
-                    fontline.append(addr)
-                elif addr >= 0xa1 and addr <= 0xbf:
+                if addr >= 0xa1 and addr <= 0xbf:
                     fontline.append(0xEFBD00+addr) # アドレスを変換して格納
                 elif addr >= 0xc0 and addr <= 0xdf:
                     fontline.append(0xEFBDC0+addr) # アドレスを変換して格納
-                else: #0xe0以降は、仮の値
-                    fontline.append(0xFFFF00+addr) # アドレスを変換して格納
+                else:
+                    fontline.append(addr)
             if line.startswith('ENDCHAR'): # ピクセル情報が終わりの場合
-                self.fontdata.append(fontline) # 1文字の情報をフォントデータに格納
+                fontdata.append(fontline) # 1文字の情報をフォントデータに格納
                 fontline=[] # リストの初期化
                 b_flag=0 # ピクセル行の判別初期化
                 gc.collect() # 可変のfontlineを使用するため、メモリの解放
@@ -47,5 +44,6 @@ class FontLoader(object):
                 fontline.append(int(line.strip(), 16)) # 1文字のBITMAP情報リスト作成
             if line.startswith('BITMAP'):
                 b_flag=1 # 次の行からピクセル情報
-        file.close()       
-        return self.fontdata
+        file.close()
+        sorted_fontdata = sorted(fontdata) # コード順に並べ替え
+        return sorted_fontdata
