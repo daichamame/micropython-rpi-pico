@@ -8,10 +8,16 @@ from machine import Pin,SPI
 import time
 import framebuf
 
+try:# フォント関連のモジュールのインポート(拡張予定)
+    import daichamame_util
+except ImportError:
+    print("No module named 'daichamame_util'")
+
 class Epd266(object):
-    # 表示色
+    # 表示色(区別するためのもの)
     WHITE   = const(0xFF)
     BLACK   = const(0x00)
+    RED     = const(0xE0)
     # 解像度
     WIDTH        = const(152)
     HEIGHT       = const(296)
@@ -40,8 +46,6 @@ class Epd266(object):
     DC_PIN      = 8
     CS_PIN      = 9
     BUSY_PIN    = 13
-    CLK_PIN     = 10
-    MOSI_PIN    = 11
 
     def __init__(self, rotate,font_array,font_size):
         """ 初期設定 rotate:(0 90 180 270)
@@ -54,16 +58,22 @@ class Epd266(object):
         self.dc     = Pin(self.DC_PIN)
         self.rst    = Pin(self.RST_PIN)
         self.busy   = Pin(self.BUSY_PIN)
-        self.clk    = Pin(self.CLK_PIN)
-        self.mosi   = Pin(self.MOSI_PIN)
         self.width  = self.WIDTH
         self.height = self.HEIGHT
         self.rotate = rotate
-        self.buffer = bytearray(self.BUFFER_SIZE)
-        self.framebuf = framebuf.FrameBuffer(self.buffer,self.WIDTH,self.HEIGHT,framebuf.MONO_HLSB)
+        self.buffer_black = bytearray(self.BUFFER_SIZE) # 白黒用バッファ
+        self.buffer_red = bytearray(self.BUFFER_SIZE)   # 赤用バッファ
+        self.framebuf_black = framebuf.FrameBuffer(self.buffer_black,self.WIDTH,self.HEIGHT,framebuf.MONO_HLSB)
+        self.framebuf_red = framebuf.FrameBuffer(self.buffer_red,self.WIDTH,self.HEIGHT,framebuf.MONO_HLSB)
         self.font_array = font_array
         self.font_size = font_size
-        
+        if font_array == None: # font_arrayが空の場合フォントライブラリをimportする
+            try:
+                self.util=daichamame_util.util(font_size)
+            except:
+                print("The module 'daichamame_util' is unavailable.")
+        self.init()
+
     # 電子ペーパー初期化
     def init(self):
         """ 電子ペーパーを初期化する 
@@ -151,12 +161,16 @@ class Epd266(object):
         self.cs(0)
         self.spi.write(bytes([buf]))
         self.cs(1)
+    # 画面データを送信する
+    def send_image_data(self, buf):
+        self.dc(1)
+        self.cs(0)
+        self.spi.write(bytearray(buf))
+        self.cs(1)
     # busy を確認してアイドリング
     def read_busy(self):
-        time.sleep_ms(100)
-        while(self.busy == 1): # LOW: idle, HIGH: busy
-            time.sleep_ms(100)
-        time.sleep_ms(100)
+        while(self.busy.value() == 1): # LOW: idle, HIGH: busy
+            time.sleep_ms(10)
     # LUA の設定
     def set_LUA(self):
         self.send_cmd(0x32)
@@ -164,14 +178,14 @@ class Epd266(object):
             self.send_data(i)
         self.read_busy()
     # 画面消去
-    def clear(self):
+    def clear(self,color=WHITE):
         """ 画面一面を白で埋める"""
-        self.send_cmd(0x24)
-        for i in range(self.BUFFER_SIZE):
-            self.send_data(self.WHITE)    #      白で描画
+        self.send_cmd(0x24) # 白黒
+        self.send_image_data([color] * self.BUFFER_SIZE)
+        self.send_cmd(0x26) # 赤
+        self.send_image_data([0x00] * self.BUFFER_SIZE)
         self.send_cmd(0x20)
-        self.read_busy()
-        self.display()
+        self.update_display()
     # 待機
     def sleep(self):
         self.send_cmd(0x10)
@@ -179,16 +193,26 @@ class Epd266(object):
     # 画面表示
     def display(self):
         """ 表示用配列を利用して画面を表示する"""
-        self.send_cmd(0x24)
-        for i in range(self.BUFFER_SIZE):
-            self.send_data(self.buffer[i])
+        self.send_cmd(0x24) # 白黒
+        self.send_image_data(self.buffer_black)
+        self.send_cmd(0x26) # 赤
+        self.send_image_data(self.buffer_red)
+        self.send_cmd(0x20)
+        self.update_display()
+    # 
+    def update_display(self):
+        """ DISPLAY MODEは1 """
+        self.send_cmd(0x22)
+        self.send_data(0xcf)
         self.send_cmd(0x20)
         self.read_busy()
-        time.sleep_ms(500)
+
     # バッファの初期化
     def buffer_clear(self):
         """ 表示用配列を初期化する """
-        self.framebuf.fill(1)
+        self.framebuf_black.fill(1)
+        self.framebuf_red.fill(0)
+
     # 画面の回転を設定
     def set_rotate(self,rotate):
         """ 表示画面を回転させる（rotate=、0 , 90 , 180, 270） """
@@ -196,19 +220,31 @@ class Epd266(object):
             self.rotate = rotate
     # 点を打つ
     def pset(self,px, py, color):
-        """ 座標(px,py) に color(白、黒) で指定した色で点を打つ  """
+        """ 座標(px,py) に color(白、黒、赤) で指定した色で点を打つ  """
         if self.rotate == 0:
             if (px<self.WIDTH)*(py<self.HEIGHT):
-                self.framebuf.pixel(px,py,color)         
+                if color == self.RED:
+                    self.framebuf_red.pixel(px,py,0x1)
+                else:
+                    self.framebuf_black.pixel(px,py,color)         
         elif self.rotate == 90:
             if (px<self.HEIGHT)*(py<self.WIDTH):
-                self.framebuf.pixel(py,self.HEIGHT-px,color)
+                if color == self.RED:
+                    self.framebuf_red.pixel(py,self.HEIGHT-px,0x1)
+                else:
+                    self.framebuf_black.pixel(py,self.HEIGHT-px,color)
         elif self.rotate == 180:
             if (px<self.WIDTH)*(py<self.HEIGHT):
-                self.framebuf.pixel(self.WIDTH-px,self.HEIGHT-py,color)            
+                if color == self.RED:
+                    self.framebuf_red.pixel(self.WIDTH-px,self.HEIGHT-py,0x1)
+                else:
+                    self.framebuf_black.pixel(self.WIDTH-px,self.HEIGHT-py,color)            
         elif self.rotate == 270:
             if (px<self.HEIGHT)*(py<self.WIDTH):
-                self.framebuf.pixel(self.WIDTH-py,px,color)            
+                if color == self.RED:
+                    self.framebuf_red.pixel(self.WIDTH-py,px,0x1)
+                else:
+                    self.framebuf_black.pixel(self.WIDTH-py,px,color)            
         else:
             return
     # 大きな点を打つ
@@ -219,39 +255,60 @@ class Epd266(object):
     # 表示文字のビットマップ情報を取得
     def get_fontdata(self,code):
         """ フォントのビットマップ情報をリストから取得する """
+        icode= int.from_bytes(code, 'big')
         l_num = 0
         h_num = len(self.font_array)-1
 
         while(l_num <= h_num): # 二分探索を使って、
             m_num = int((h_num+l_num)/2)
-            if(int(code) == self.font_array[m_num][0]):
-                return self.font_array[m_num]
-            elif(int(code) < self.font_array[m_num][0]):
+            if(icode == self.font_array[m_num][0]):
+                return self.font_array[m_num][1:17]
+            elif(icode < self.font_array[m_num][0]):
                 h_num = m_num-1
             else:
                 l_num = m_num+1
-        return self.font_array[0]   # フォントが見つからなかった場合
+        return self.font_array[0][1:17]   # フォントが見つからなかった場合
     # 文字を書く
-    def print( self,dx, dy, buf,ratio):
-        """ 開始位置(dx,dy）からbufの文字列を書く、ratioは、拡大率
+    def print( self,dx, dy, buf,ratio=1,color=BLACK,invert=False):
+        """ 開始位置(dx,dy）
+        buf:表示文字列
+        ratio:拡大率(1,2,3..)
+        color:フォントの色(既定値 黒)
+        invert:反転（既定値 False)
         画面に表示する場合には、display()を実行する """
+        # 文字色と背景色の設定
+        if invert is False:
+            font_color = color
+            background_color = self.WHITE
+        else:
+            font_color = self.WHITE
+            background_color = color
         # 縦横の向きに合わせて幅サイズを調整
         if self.rotate == 0 or self.rotate == 180:
             wx=self.WIDTH
         else:
             wx=self.HEIGHT
+        # 文字数分繰り返す
         for ch in buf:
-            self.fontdata=self.get_fontdata("0x"+ch.encode('utf-8').hex())  # フォントデータを取得
-            if ord(ch) < 0x7F: # ASCIIコードの場合(8x16)
+            if self.font_array is None:
+                try:
+                    fontdata=self.util.get_fontdata(ch.encode('utf-8'))  # フォントデータを取得
+                except:
+                    fontdata=[0x00]*self.font_size # フォントデータを取得
+            else:
+                fontdata=self.get_fontdata(ch.encode('utf-8'))  # フォントデータを取得                
+            utf8code = int.from_bytes(ch.encode('utf-8'), 'big')
+            # ASCIIコードまたは半角カタカナの場合
+            if utf8code < 0x7F or (utf8code >= 0xEFBDA1 and utf8code <= 0xEFBDBF) or (utf8code >= 0xEFBE80 and utf8code <= 0xEFBE9F): 
                 for j in range(self.font_size):
                     if (dx > wx-int(self.font_size/2*ratio)): # 改行の判定
                         dx=0
                         dy+=self.font_size*ratio
                     for i in range(self.font_size/2):
-                        if(int(self.fontdata[j+1])) & (0x80 >> int(i%(self.font_size/2))):
-                            self.mpset(dx+i*ratio,dy+j*ratio,self.BLACK,ratio)
+                        if(int(fontdata[j])) & (0x80 >> int(i%(self.font_size/2))):
+                            self.mpset(dx+i*ratio,dy+j*ratio,font_color,ratio)
                         else:
-                            self.mpset(dx+i*ratio,dy+j*ratio,self.WHITE,ratio)
+                            self.mpset(dx+i*ratio,dy+j*ratio,background_color,ratio)
                 dx+=int(self.font_size/2*ratio)
             else:   # 日本語の場合(16x16)
                 for j in range(self.font_size):
@@ -259,22 +316,22 @@ class Epd266(object):
                         dx=0
                         dy+=self.font_size*ratio
                     for i in range(self.font_size):
-                        if(int(self.fontdata[j+1])) & (0x8000 >> int(i%(self.font_size))):
-                            self.mpset(dx+i*ratio,dy+j*ratio,self.BLACK,ratio)
+                        if(int(fontdata[j])) & (0x8000 >> int(i%(self.font_size))):
+                            self.mpset(dx+i*ratio,dy+j*ratio,font_color,ratio)
                         else:
-                            self.mpset(dx+i*ratio,dy+j*ratio,self.WHITE,ratio)
+                            self.mpset(dx+i*ratio,dy+j*ratio,background_color,ratio)
                 dx+=int(self.font_size*ratio)
     # 線をひく
     def line(self,sx,sy,ex,ey):
         """開始位置(sx,sy)から、終了位置(ex,ey)まで直線を描く 画面に表示する場合には、display()を実行する"""
         if self.rotate == 0:
-            self.framebuf.line(sx,sy,ex,ey,self.BLACK)
+            self.framebuf_black.line(sx,sy,ex,ey,self.BLACK)
         elif self.rotate == 90:
-            self.framebuf.line(sy,self.HEIGHT-sx,ey,self.HEIGHT-ex,self.BLACK)
+            self.framebuf_black.line(sy,self.HEIGHT-sx,ey,self.HEIGHT-ex,self.BLACK)
         elif self.rotate == 180:
-            self.framebuf.line(self.WIDTH-sx,self.HEIGHT-sy,self.WIDTH-ex,self.HEIGHT-ey,self.BLACK)
+            self.framebuf_black.line(self.WIDTH-sx,self.HEIGHT-sy,self.WIDTH-ex,self.HEIGHT-ey,self.BLACK)
         elif self.rotate == 270:
-            self.framebuf.line(self.WIDTH-sy,sx,self.WIDTH-ey,ex,self.BLACK)
+            self.framebuf_black.line(self.WIDTH-sy,sx,self.WIDTH-ey,ex,self.BLACK)
         else:
             return
     # アイコン(32x32)を描く
@@ -287,3 +344,4 @@ class Epd266(object):
                     self.mpset(dx+i*ratio+16*(j%2==1)*ratio,dy+int(j/2)*ratio,self.BLACK,ratio)
                 else:
                     self.mpset(dx+i*ratio+16*(j%2==1)*ratio,dy+int(j/2)*ratio,self.WHITE,ratio)
+
