@@ -8,6 +8,7 @@
    描画に関して、文字やアイコンで一部Framebufを使用しているが、
    線、四角形、ビットマップ画像は直接書き込んでいる
    色の指定は、rgbそれぞれ1バイトで、0xffffffのように24ビットの形式
+   
 """
 from machine import Pin,SPI  
 import time
