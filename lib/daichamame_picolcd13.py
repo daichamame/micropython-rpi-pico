@@ -254,15 +254,16 @@ class PICOLCD13(object):
                 l_num = m_num+1
         return self.font_array[0][1:17]   # フォントが見つからなかった場合
     # 文字を書く
-    def print( self,dx, dy, buf,color,bgcolor=0x000000,ratio=2):
+    def print( self,dx, dy, buf,color,bgcolor=0x000000,ratio=2,bold=0):
         """ 開始位置(dx,dy）
         buf:表示文字列
         color:フォントの色
         bgcolor:背景色（既定値 0x000000)
-        ratio:拡大率(1,2,3..)
+        ratio:拡大率(1,2,3)
+        bold:太字（0,1,2,3)
         1.3インチに対して縦横240ピクセルの為、2倍の大きさを既定値とした
         """
-        wx=self.width
+        wx=self.SCREEN_WIDTH
         (h_color,l_color)=self.color565(color)
         color=(h_color << 8) | l_color
         (h_color,l_color)=self.color565(bgcolor)
@@ -280,37 +281,39 @@ class PICOLCD13(object):
             utf8code = int.from_bytes(ch.encode('utf-8'), 'big')
             # ASCIIコードまたは半角カタカナの場合
             if utf8code < 0x7F or (utf8code >= 0xEFBDA1 and utf8code <= 0xEFBDBF) or (utf8code >= 0xEFBE80 and utf8code <= 0xEFBE9F): 
-                buffer = bytearray(self.font_size*self.font_size*ratio*ratio)
-                fb = framebuf.FrameBuffer(buffer,int(self.font_size/2)*ratio,self.font_size*ratio,framebuf.RGB565)
+                buffer = bytearray((self.font_size+bold*2)*self.font_size*ratio*ratio)
+                fb = framebuf.FrameBuffer(buffer,int(self.font_size/2+bold)*ratio,self.font_size*ratio,framebuf.RGB565)
                 fb.fill(bgcolor)
                 for j in range(self.font_size):
-                    if (dx > wx-int(self.font_size/2*ratio)): # 改行の判定
+                    if (dx > wx-int(self.font_size/2*ratio)-bold*ratio): # 改行の判定
                         dx=0
                         dy+=self.font_size*ratio
                     for i in range(self.font_size/2):
                         if(int(fontdata[j])) & (0x80 >> int(i%(self.font_size/2))):
-                            for m in range(ratio):
-                                for n in range(ratio):
-                                    fb.pixel(i*ratio + m, j*ratio + n,  color)
-                self._set_window(dx,dy,dx+int(self.font_size/2)*ratio,dy+self.font_size*ratio)
+                            for b in range(bold+1):
+                                for m in range(ratio):
+                                    for n in range(ratio):
+                                        fb.pixel((i+b)*ratio + m, j*ratio + n,  color)
+                self._set_window(dx,dy,dx+int(self.font_size/2+bold)*ratio,dy+self.font_size*ratio)
                 self.send_image_data(buffer)
-                dx+=int(self.font_size/2*ratio)
+                dx+=int(self.font_size/2*ratio)+bold*ratio
             else:   # 日本語の場合
-                buffer = bytearray(self.font_size*self.font_size*2*ratio*ratio)
-                fb = framebuf.FrameBuffer(buffer,self.font_size*ratio,self.font_size*ratio,framebuf.RGB565)
+                buffer = bytearray(self.font_size*(self.font_size+bold)*2*ratio*ratio)
+                fb = framebuf.FrameBuffer(buffer,(self.font_size+bold)*ratio,self.font_size*ratio,framebuf.RGB565)
                 fb.fill(bgcolor)
                 for j in range(self.font_size):
-                    if (dx > wx-int(self.font_size*ratio)): # 改行の判定
+                    if (dx > wx-int(self.font_size*ratio)-bold*ratio): # 改行の判定
                         dx=0
                         dy+=self.font_size*ratio
                     for i in range(self.font_size):
                         if(int(fontdata[j])) & (0x8000 >> int(i%(self.font_size))):
-                            for m in range(ratio):
-                                for n in range(ratio):
-                                    fb.pixel(i*ratio + m, j*ratio + n,  color)
-                self._set_window(dx,dy,dx+self.font_size*ratio,dy+self.font_size*ratio)
+                            for b in range(bold+1):
+                                for m in range(ratio):
+                                    for n in range(ratio):
+                                        fb.pixel((i+b)*ratio + m, j*ratio + n,  color)
+                self._set_window(dx,dy,dx+(self.font_size+bold)*ratio,dy+self.font_size*ratio)
                 self.send_image_data(buffer)
-                dx+=int(self.font_size*ratio)
+                dx+=int(self.font_size*ratio)+bold*ratio
             fb.fill(0)
             gc.collect()
     # 線を描く
