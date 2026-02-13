@@ -187,7 +187,7 @@
 ### NEC方式 赤外線受信
 ![IR NEC](img/ir_nec_decoder.png)
 
-[NEC方式IR受信モジュールの詳細はこちら](docs\IRNEC.md)
+[NEC方式IR受信モジュールの詳細はこちら](docs/IRNEC.md)
 
 
 ## その他
