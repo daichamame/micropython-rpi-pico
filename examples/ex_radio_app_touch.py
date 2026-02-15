@@ -1,7 +1,7 @@
 """
-    Ili9341 + xpt2046 と RDA5807 をつかったラジオ
+タッチパネルで操作するFM DSP ラジオ
 
-    接続：
+接続：
     Ili9341 + xpt2046
     RDA5807は、I2C CH:0 SDA=GP4,SCL=GP5,FREQ=100kHz
 
