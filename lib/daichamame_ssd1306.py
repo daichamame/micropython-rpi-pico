@@ -8,6 +8,11 @@ from machine import Pin,I2C
 import time
 import framebuf
 
+try:# フォント関連のモジュールのインポート
+    import daichamame_util
+except ImportError:
+    print("No module named 'daichamame_util'")
+    
 class SSD1306(object):
     # 色
     WHITE   = const(1)
@@ -39,6 +44,12 @@ class SSD1306(object):
         self.page_addr_end   = self.PAGE_NUM - 1
         self.font_size = font_size
         self.font_array = font_array
+        if font_array is None: # font_arrayが空の場合フォントライブラリをimportする
+            try:
+                self.util=daichamame_util.util(font_size)
+            except:
+                print("The module 'daichamame_util' is unavailable.")
+
     # OLED初期化
     def init(self):
         """ OLED SSD1306を初期化する """
@@ -134,13 +145,14 @@ class SSD1306(object):
     # 表示文字のビットマップ情報を取得
     def get_fontdata(self,code):
         """ フォントのビットマップ情報をリストから取得する """
+        icode= int.from_bytes(code, 'big')
         l_num = 0
         h_num = len(self.font_array)-1
         while(l_num <= h_num): # 二分探索を使用
             m_num = int((h_num+l_num)/2)
-            if(int(code) == self.font_array[m_num][0]):
-                return self.font_array[m_num]
-            elif(int(code) < self.font_array[m_num][0]):
+            if(icode == self.font_array[m_num][0]):
+                return self.font_array[m_num][1:17]
+            elif(icode < self.font_array[m_num][0]):
                 h_num = m_num-1
             else:
                 l_num = m_num+1
@@ -157,13 +169,19 @@ class SSD1306(object):
         else:
             wx=self.HEIGHT
         for ch in buf:
-            font_data=self.get_fontdata("0x"+ch.encode('utf-8').hex())  # フォントデータを取得
+            if self.font_array is None:
+                try:
+                    fontdata=self.util.get_fontdata(ch.encode('utf-8'))  # フォントデータを取得
+                except:
+                    fontdata=[0x00]*self.font_size  # フォントデータを0埋め
+            else:
+                fontdata=self.get_fontdata(ch.encode('utf-8'))  # フォントデータを取得                
             for j in range(self.font_size):
                 if (dx > wx-int(self.font_size/2*ratio)): # 改行の判定
                     dx=0
                     dy+=self.font_size*ratio
                 for i in range(self.font_size/2):
-                    if(int(font_data[j+1])) & (0x80 >> int(i%(self.font_size/2))):
+                    if(int(fontdata[j])) & (0x80 >> int(i%(self.font_size/2))):
                         self.mpset(dx+i*ratio,dy+j*ratio,self.WHITE,ratio)
                     else:
                         self.mpset(dx+i*ratio,dy+j*ratio,self.BLACK,ratio)
@@ -179,14 +197,21 @@ class SSD1306(object):
         else:
             wx=self.HEIGHT
         for ch in buf:
-            font_data=self.get_fontdata("0x"+ch.encode('utf-8').hex())  # フォントデータを取得
-            if ord(ch) < 0x7F: # ASCIIコードの場合
+            if self.font_array is None:
+                try:
+                    fontdata=self.util.get_fontdata(ch.encode('utf-8'))  # フォントデータを取得
+                except:
+                    fontdata=[0x00]*self.font_size  # フォントデータを0埋め
+            else:
+                fontdata=self.get_fontdata(ch.encode('utf-8'))  # フォントデータを取得                
+            utf8code = int.from_bytes(ch.encode('utf-8'), 'big')
+            if utf8code < 0x7F or (utf8code >= 0xEFBDA1 and utf8code <= 0xEFBDBF) or (utf8code >= 0xEFBE80 and utf8code <= 0xEFBE9F): 
                 for j in range(self.font_size):
                     if (dx > wx-int(self.font_size/2*ratio)): # 改行の判定
                         dx=0
                         dy+=self.font_size*ratio
                     for i in range(self.font_size/2):
-                        if(int(font_data[j+1])) & (0x80 >> int(i%(self.font_size/2))):
+                        if(int(fontdata[j])) & (0x80 >> int(i%(self.font_size/2))):
                             self.mpset(dx+i*ratio,dy+j*ratio,self.WHITE,ratio)
                         else:
                             self.mpset(dx+i*ratio,dy+j*ratio,self.BLACK,ratio)
@@ -197,7 +222,7 @@ class SSD1306(object):
                         dx=0
                         dy+=self.font_size*ratio
                     for i in range(self.font_size):
-                        if(int(font_data[j+1])) & (0x8000 >> int(i%(self.font_size))):
+                        if(int(fontdata[j])) & (0x8000 >> int(i%(self.font_size))):
                             self.mpset(dx+i*ratio,dy+j*ratio,self.WHITE,ratio)
                         else:
                             self.mpset(dx+i*ratio,dy+j*ratio,self.BLACK,ratio)

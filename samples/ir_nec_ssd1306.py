@@ -2,11 +2,7 @@
 モジュール名: ir_nec_ssd1306.py
 概要:
     NEC方式 赤外線リモコン受信モジュールを使用して
-    パルス幅の計測・リーダー検出・0/1判定・32bit整合性チェックを行い、値を返す。
-    値によるキー判定は本モジュールでは行わない。
-特徴:
-    - IRQでリアルタイムにパルス幅を計測し、最新の値を保持
-    - 値の取得は read() を呼ぶだけで最新の値を取得可能
+    リモコンのアドレスとコマンドを取得してOLEDに表示します。
 
 使用デバイス:
     以下のデバイスを使用して作成しています
@@ -23,6 +19,7 @@
 配置：
     ir_nec_ssd1306.py (このファイル)
     lib\
+        daichamame_ir_nec_decoder.py
         daichamame_ssd1306.py
         fontloader.py
     font\
@@ -34,21 +31,6 @@ import fontloader
 from machine import Timer
 
 class MainClass:
-    keycode = {
-        0x1B:"Power",
-        0x1F:"  A",
-        0x1E:"  B",
-        0x1A:"  C",
-        0x8D:" UL",      # 左上
-        0x05:" Up",
-        0x84:" UR",      # 右上
-        0x08:"Left",
-        0x04:"Center",
-        0x01:"Right",
-        0x88:" LL",      # 左下
-        0x00:"Down",
-        0x81:" LR"       # 右下
-    }
     def __init__(self):
         # フォントの読み込み
         fl=fontloader.FontLoader("/font/shnm8x16r.bdf")
@@ -59,26 +41,26 @@ class MainClass:
         self.ssd1306.clear()
         self.ssd1306.flash()
         self.ir = daichamame_ir_nec_decoder.IRNECReceiver(pin=16)
-        self.datacode = 0xff
+        self.addr = 0xff
+        self.cmd = 0xff        
+        self.ssd1306.print(0, 16,"Address:Command",1)
         self.update_display()
         # タイマーの初期化
-        timer = Timer()
+        self.timer = Timer()
         # タイマーを設定（100ms毎にリモコンの状態をチェックし描画する）
-        timer.init(period=100, mode=Timer.PERIODIC, callback=self.main_loop)
+        self.timer.init(period=100, mode=Timer.PERIODIC, callback=self.main_loop)
 
     # OLED初期描画
     def update_display(self):
-        self.ssd1306.clear()
-        keyname = self.keycode.get(self.datacode, '-----')
-        self.ssd1306.print(0, 16,keyname,2)
+        text = "0x{:02X}   :0x{:02X}".format(self.addr,self.cmd)
+        self.ssd1306.print(0, 32,text,1)
         self.ssd1306.display() 
         
     # メインループ
     def main_loop(self,t):
         val = self.ir.read()    # リモコンの押下状況を取得
-        if val: # リモコンが押されていれば、描画処理を実施
-            (addr, cmd) = val
-            self.datacode = cmd
+        if val is not None: # リモコンが押されていれば、描画処理を実施
+            (self.addr, self.cmd) = val
             self.update_display()
 
 # メイン
