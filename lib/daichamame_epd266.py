@@ -248,10 +248,11 @@ class Epd266(object):
         else:
             return
     # 大きな点を打つ
-    def mpset(self,px,py,color,ratio):
-        for i in range(ratio):
-            for j in range(ratio):
-                self.pset(px + i, py + j,  color)
+    def mpset(self,px,py,color,ratio,bold=0):
+        for b in range(bold+1):
+            for i in range(ratio):
+                for j in range(ratio):
+                    self.pset(px + i+(b*ratio), py + j,  color)
     # 表示文字のビットマップ情報を取得
     def get_fontdata(self,code):
         """ フォントのビットマップ情報をリストから取得する """
@@ -269,12 +270,14 @@ class Epd266(object):
                 l_num = m_num+1
         return self.font_array[0][1:17]   # フォントが見つからなかった場合
     # 文字を書く
-    def print( self,dx, dy, buf,ratio=1,color=BLACK,invert=False):
+    def print( self,dx, dy, buf,ratio=1,color=BLACK,invert=False,bold=0,vertical=False):
         """ 開始位置(dx,dy）
         buf:表示文字列
         ratio:拡大率(1,2,3..)
         color:フォントの色(既定値 黒)
         invert:反転（既定値 False)
+        bold:太字（0,1,2,3)
+        vertical:（既定値 False)
         画面に表示する場合には、display()を実行する """
         # 文字色と背景色の設定
         if invert is False:
@@ -301,26 +304,34 @@ class Epd266(object):
             # ASCIIコードまたは半角カタカナの場合
             if utf8code < 0x7F or (utf8code >= 0xEFBDA1 and utf8code <= 0xEFBDBF) or (utf8code >= 0xEFBE80 and utf8code <= 0xEFBE9F): 
                 for j in range(self.font_size):
-                    if (dx > wx-int(self.font_size/2*ratio)): # 改行の判定
+                    if (dx > wx-int(self.font_size/2*ratio)-bold*ratio): # 改行の判定
                         dx=0
                         dy+=self.font_size*ratio
                     for i in range(self.font_size/2):
                         if(int(fontdata[j])) & (0x80 >> int(i%(self.font_size/2))):
-                            self.mpset(dx+i*ratio,dy+j*ratio,font_color,ratio)
+                            self.mpset(dx+i*ratio,dy+j*ratio,font_color,ratio,bold)
                         else:
-                            self.mpset(dx+i*ratio,dy+j*ratio,background_color,ratio)
-                dx+=int(self.font_size/2*ratio)
+                            if bold == 0:
+                                self.mpset(dx+i*ratio,dy+j*ratio,background_color,ratio,bold)
+                if vertical is False:
+                    dx+=int(self.font_size/2*ratio)+bold*ratio
+                else:
+                    dy+=int(self.font_size*ratio)
             else:   # 日本語の場合(16x16)
                 for j in range(self.font_size):
-                    if (dx > wx-int(self.font_size*ratio)): # 改行の判定
+                    if (dx > wx-int(self.font_size*ratio)-bold*ratio): # 改行の判定
                         dx=0
                         dy+=self.font_size*ratio
                     for i in range(self.font_size):
                         if(int(fontdata[j])) & (0x8000 >> int(i%(self.font_size))):
-                            self.mpset(dx+i*ratio,dy+j*ratio,font_color,ratio)
+                            self.mpset(dx+i*ratio,dy+j*ratio,font_color,ratio,bold)
                         else:
-                            self.mpset(dx+i*ratio,dy+j*ratio,background_color,ratio)
-                dx+=int(self.font_size*ratio)
+                            if bold == 0:
+                                self.mpset(dx+i*ratio,dy+j*ratio,background_color,ratio,bold)
+                if vertical is False:
+                    dx+=int(self.font_size*ratio)+bold*ratio
+                else:
+                    dy+=int(self.font_size*ratio)                    
     # 線をひく
     def line(self,sx,sy,ex,ey):
         """開始位置(sx,sy)から、終了位置(ex,ey)まで直線を描く 画面に表示する場合には、display()を実行する"""
