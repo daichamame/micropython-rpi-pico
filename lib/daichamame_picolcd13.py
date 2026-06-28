@@ -53,6 +53,9 @@ class PICOLCD13(object):
         self.din    = Pin(self.DIN_PIN)
         self.clk    = Pin(self.CLK_PIN)
 
+        # 最後に押されたボタンを保存
+        self._last_key = None
+
         # ジョイスティックとボタンを定義
         self.key_a  = Pin(self.KEY_A,Pin.IN,Pin.PULL_UP)
         self.key_b  = Pin(self.KEY_B,Pin.IN,Pin.PULL_UP)
@@ -63,6 +66,17 @@ class PICOLCD13(object):
         self.joy_l  = Pin(self.JOY_L,Pin.IN,Pin.PULL_UP)
         self.joy_r  = Pin(self.JOY_R,Pin.IN,Pin.PULL_UP)
         self.joy_c  = Pin(self.JOY_C,Pin.IN,Pin.PULL_UP)
+        # イベントハンドラ登録
+        self.key_a.irq(trigger=Pin.IRQ_FALLING,handler=self._set_lastkey)
+        self.key_b.irq(trigger=Pin.IRQ_FALLING,handler=self._set_lastkey)
+        self.key_x.irq(trigger=Pin.IRQ_FALLING,handler=self._set_lastkey)
+        self.key_y.irq(trigger=Pin.IRQ_FALLING,handler=self._set_lastkey)
+        self.joy_u.irq(trigger=Pin.IRQ_FALLING,handler=self._set_lastkey)
+        self.joy_d.irq(trigger=Pin.IRQ_FALLING,handler=self._set_lastkey)
+        self.joy_l.irq(trigger=Pin.IRQ_FALLING,handler=self._set_lastkey)
+        self.joy_r.irq(trigger=Pin.IRQ_FALLING,handler=self._set_lastkey)
+        self.joy_c.irq(trigger=Pin.IRQ_FALLING,handler=self._set_lastkey)
+
 
         # 90度回転とそれ以外の設定 
         self.rotate = rotate
@@ -143,7 +157,7 @@ class PICOLCD13(object):
     def sleep_in(self):
         self.send_cmd(0x10)
     # sleep out
-    def sleep_in(self):
+    def sleep_out(self):
         self.send_cmd(0x11)
 
     # 描画エリア指定
@@ -154,15 +168,19 @@ class PICOLCD13(object):
         self.send_cmd(0x2A)
         self.send_data(((start_x) >> 8) & 0xFF)
         self.send_data(start_x & 0xFF)
-        self.send_data(((end_x -1) >> 8) & 0xFF)
-        self.send_data(end_x-1 & 0xFF)
+        self.send_data(((end_x - 1) >> 8) & 0xFF)
+        self.send_data((end_x - 1) & 0xFF)
         self.send_cmd(0x2B)
         self.send_data(((start_y) >> 8) & 0xFF)
         self.send_data((start_y) & 0xFF)
-        self.send_data(((end_y -1) >> 8) & 0xFF)
-        self.send_data((end_y-1) & 0xFF)
+        self.send_data(((end_y - 1) >> 8) & 0xFF)
+        self.send_data((end_y - 1) & 0xFF)
         self.send_cmd(0x2C)
 
+    # スクロールエリアの初期化
+    def init_scroll(self):
+        self.set_scroll(0,320,0)
+        self.scroll(0)
     # スクロールエリア定義
     def set_scroll(self,tfa,vsa,bfa):
         """
@@ -172,12 +190,17 @@ class PICOLCD13(object):
         Vertical Scrolling Areaを320まで指定する
         """
         self.send_cmd(0x33)
-        self.send_data(0x00)
-        self.send_data(tfa & 0xff)
-        self.send_data(0x00)
-        self.send_data(vsa & 0xff)
-        self.send_data(0x00)
-        self.send_data(bfa & 0xff)
+        # Top Fixed Area
+        self.send_data((tfa >> 8) & 0xFF)
+        self.send_data(tfa & 0xFF)
+
+        # Vertical Scrolling Area
+        self.send_data((vsa >> 8) & 0xFF)
+        self.send_data(vsa & 0xFF)
+
+        # Bottom Fixed Area
+        self.send_data((bfa >> 8) & 0xFF)
+        self.send_data(bfa & 0xFF)
     # スクロール
     def scroll(self,num):
         """
@@ -427,3 +450,22 @@ class PICOLCD13(object):
             fp.close()
         except OSError as e:
             print(f"ビットマップファイル[ {file} ]を読み込めませんでした: {e}")
+    # 最新の押されたボタンを保持
+    def _set_lastkey(self,pin):
+        self._last_key = pin
+    # 最新の押されたボタンを取得
+    def get_lastkey(self):
+        key = self._last_key
+        self._last_key = None
+        mapping = {
+            self.key_a: "KEY_A",
+            self.key_b: "KEY_B",
+            self.key_x: "KEY_X",
+            self.key_y: "KEY_Y",
+            self.joy_u: "JOY_U",
+            self.joy_d: "JOY_D",
+            self.joy_l: "JOY_L",
+            self.joy_r: "JOY_R",
+            self.joy_c: "JOY_C",
+        }
+        return mapping.get(key, None)
